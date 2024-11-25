@@ -4,6 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 import os
+import utils.visualizations as visualizations
 
 VEHICLE_CLASS = {'TR': "Trolley Bus",
                  'T': "Tram",
@@ -110,7 +111,7 @@ def number_lines_metric(df):
     return fig
 
 def change_lines_metric(df):
-    filter_years = st.multiselect("Select Years to Display", options=df.index[1:], default=df.index[1:])
+    filter_years = st.multiselect("Select year", options=df.index[1:], default=df.index[1:])
     df = df.apply(lambda x: x - x.iloc[0]).loc[filter_years]
     df.columns = df.columns.map(VEHICLE_CLASS)
 
@@ -130,8 +131,32 @@ def change_lines_metric(df):
         height=500,
     )
     return fig
-    
-# all_df = [number_passengers, occupancy_trend, passengers_night, vehicle_use, pkm_amount, number_lines, capacity_factor, distance_travelled, saved_co2]
+
+def donought_km_travelled(df):
+    unique_years = df["year"].unique()
+    df = df.pivot_table(index="year", columns="vehicle_class", values="pkm", aggfunc="sum")
+    filtered_year = st.selectbox("Select year",options=unique_years)
+    df = df.loc[filtered_year]
+    label_years = df.index
+    values = df.values
+
+    fig = go.Figure(
+        data=[
+            go.Pie(
+                labels=label_years,
+                values=values,
+                hole=0.4,
+                textinfo="label+percent",
+                texttemplate="%{label}: %{percent:.1%}"
+            )
+        ]
+    )
+    fig.update_layout(
+        title=f"Vehicle class shares for {filtered_year}",
+        annotations=[{'text':f'{filtered_year}', 'x':0.5, 'y':0.5, 'font_size':20, 'showarrow':False}]
+    )
+    return fig
+
 
 # Logic
 if "metrics" not in st.session_state or st.session_state.metrics is None:
@@ -142,23 +167,30 @@ else:
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        pkm_metric(st.session_state.metrics[4])
+        pkm_metric(st.session_state.metrics["pkm_amount"])
     with col2:
-        distance_metric(st.session_state.metrics[7])
+        distance_metric(st.session_state.metrics["distance_travelled"])
     with col3:
-        co2_metric(st.session_state.metrics[8])
+        co2_metric(st.session_state.metrics["saved_co2"])
 
     st.markdown("<br><br> <h1 style='font-size:26px'>Flow of Passengers Entering by Line and Year</h1>", unsafe_allow_html=True)
-    fig = breakdown_lines_metric(st.session_state.metrics[0])
+    fig = breakdown_lines_metric(st.session_state.metrics["number_passengers"])
     st.plotly_chart(fig, use_container_width=True)
 
     col1, col2, = st.columns(2)
     with col1:
         st.markdown("<h1 style='font-size:26px'>Number of Lines per Vehicle </h1>", unsafe_allow_html=True)
-        st.plotly_chart(number_lines_metric(st.session_state.metrics[5]))
+        st.plotly_chart(number_lines_metric(st.session_state.metrics["number_lines"]))
     with col2:
-        st.markdown(f"<h1 style='font-size:26px'>Lines added relative to {st.session_state.metrics[5].index[0]}", unsafe_allow_html=True)
-        st.write(change_lines_metric(st.session_state.metrics[5]))
-    # fig = number_lines_metric(st.session_state.metrics(5))
-    # st.plotly_chart(fig, )
+        st.markdown(f"<h1 style='font-size:26px'>Lines added relative to {st.session_state.metrics["number_lines"].index[0]}", unsafe_allow_html=True)
+        st.write(change_lines_metric(st.session_state.metrics["number_lines"]))
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("<h1 style='font-size:26px'>Number of km per vehicle </h1>", unsafe_allow_html=True)
+        fig = donought_km_travelled(df=st.session_state.metrics["pkm_amount"])
+        st.plotly_chart(fig)
+
+    with col2:
+        st.markdown("<h1 style='font-size:26px'>Distribution of pkm", unsafe_allow_html=True)
 

@@ -79,7 +79,7 @@ def calculate_metrics(data):
                                             values="passenger_kilometre",
                                             aggfunc="sum")
     pkm_amount = functions.aggregate_time_step(pkm_amount)
-    pkm_amount = pkm_amount.stack().stack().reset_index().rename({"level_0":"time","type_transport":"vehicle_class",
+    pkm_amount = pkm_amount.stack(future_stack=True).stack(future_stack=True).reset_index().rename({"level_0":"time","type_transport":"vehicle_class",
                                                                   0:"pkm"}, axis=1)
 
     # Number of lines (dim: year, vehicle class, line name)
@@ -113,6 +113,14 @@ def calculate_metrics(data):
     pkm_co2_car = pkm_total * CARBON_INTENSITY_VEHICLE_FLEET
     saved_co2 = pkm_co2_car.sub(pkm_co2_public_transport.sum(axis=1), axis="rows") / 1000 # Translate to tons CO2-eq
 
-    all_df = [number_passengers, occupancy_trend, passengers_night, vehicle_use, pkm_amount, number_lines, capacity_factor, distance_travelled, saved_co2]
+    all_df = {"number_passengers": number_passengers,
+              "occupancy_tren": occupancy_trend,
+              "passenger_day" :passengers_night,
+              "vehicle_use": vehicle_use,
+              "pkm_amount": pkm_amount,
+              "number_lines": number_lines,
+              "capacity_factor": capacity_factor,
+              "distance_travelled": distance_travelled,
+              "saved_co2": saved_co2}
 
     return all_df
