@@ -157,7 +157,7 @@ def donought_km_travelled(df):
     )
     return fig
 
-def occupancy_trend_plot(df):
+def passengerkm_trend_plot(df):
     unique_years = df["year"].unique()
     filter_one_year = st.selectbox("Select year", options=unique_years, key="select_year")
     filter_multiple_vehicles = st.multiselect(
@@ -182,6 +182,33 @@ def occupancy_trend_plot(df):
     )
 
     return fig
+
+def occupancy_trend_plot(df):
+    df = df.unstack().unstack().reset_index().rename({"level_0":"type_day"}, axis="columns")
+    df = pd.melt(df, id_vars=["type_day", "year"], var_name="time_day")
+    type_day = df["type_day"].unique()
+    years = df["year"].unique()
+    
+    filter_one_year = st.selectbox("Select year", options=years, key="select_year_occupancy")
+
+    df = df[df["year"]==filter_one_year].drop("year", axis="columns")
+
+    fig = px.line(
+        df,
+        x="time_day",
+        y="value",
+        color="type_day",
+        title=f"Amounts of passenger for {filter_one_year}",
+        labels={"time_day": "Time", "value": "No. passengers", "type_day":"Day of the week"}
+    )
+    fig.update_layout(
+        xaxis_title="Time of day",
+        yaxis_title="# Passengers",
+        xaxis_tickformat="%H:%M"
+    )
+
+    return fig
+
 
 # Logic
 if "metrics" not in st.session_state or st.session_state.metrics is None:
@@ -218,6 +245,12 @@ else:
 
     with col2:
         st.markdown("<h1 style='font-size:26px'>Distribution of pkm", unsafe_allow_html=True)
-        fig = occupancy_trend_plot(df=st.session_state.metrics["pkm_amount"])
+        fig = passengerkm_trend_plot(df=st.session_state.metrics["pkm_amount"])
+        st.plotly_chart(fig)
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("<h1 style='font-size:26px'>Occupancy trends per day and year", unsafe_allow_html=True)
+        fig = occupancy_trend_plot(df=st.session_state.metrics["occupancy_trend"])
         st.plotly_chart(fig)
 

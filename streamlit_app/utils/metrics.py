@@ -49,7 +49,7 @@ def calculate_metrics(data):
                                     values=["passenger_amount_WD", "passenger_amount_NWD","passenger_amount_night"],
                                     aggfunc="sum")
 
-    occupancy_trend = (functions.aggregate_time_step(occupancy_trend)
+    occupancy_trend = (functions.aggregate_time_step(occupancy_trend, amount="1min")
                                 .rename({"passenger_amount_NWD": "Non-working days",
                                         "passenger_amount_WD": "Working days",
                                         "passenger_amount_night": "Non-working nights"},
@@ -60,7 +60,7 @@ def calculate_metrics(data):
                                         columns="year",
                                         values="passenger_amount_night",
                                         aggfunc="sum")
-    passengers_night = functions.aggregate_time_step(passengers_night)
+    passengers_night = functions.aggregate_time_step(passengers_night, amount="1min")
 
     # Vehicle class use (dim: time of day, vehicle class, type of day, year)Passenger metrics: Type of vehicle used per time
     vehicle_use = data.pivot_table(index="departure_time",
@@ -71,14 +71,14 @@ def calculate_metrics(data):
                                         "passenger_amount_night_saturday",
                                         "passenger_amount_night_sunday"],
                                 aggfunc="sum")
-    vehicle_use = functions.aggregate_time_step(vehicle_use)
+    vehicle_use = functions.aggregate_time_step(vehicle_use, amount="1min")
 
     # Passenger-kilometer (dim: vehicle class, year, time of day)
     pkm_amount = data.pivot_table(index=["departure_time"],
                                             columns=["year","type_transport"],
                                             values="passenger_kilometre",
                                             aggfunc="sum")
-    pkm_amount = functions.aggregate_time_step(pkm_amount)
+    pkm_amount = functions.aggregate_time_step(pkm_amount, amount="1min")
     pkm_amount = pkm_amount.stack(future_stack=True).stack(future_stack=True).reset_index().rename({"level_0":"time","type_transport":"vehicle_class",
                                                                   0:"pkm"}, axis=1)
 
