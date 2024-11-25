@@ -1,0 +1,11 @@
+# Ignore all csv files
+*.csv
+
+# Ignore content from data folder in steamlit folder
+streamlit_app/data/
+
+# Ignore content of .DS_Store files
+.DS_Store
+
+# Ignore pycache files
+*.pyc
