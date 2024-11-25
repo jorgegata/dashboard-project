@@ -176,6 +176,11 @@ def passengerkm_trend_plot(df):
         labels={"time":"Time", "pkm": "passenger-kilometre (pkm)", "vehicle_class":"Vehicle Type"}
     )
     fig.update_layout(
+        xaxis=dict(
+            tickmode="array",
+            tickvals=df["time"][::200],
+            tickangle=90
+        ),
         xaxis_title="Time",
         yaxis_title="passenger-kilometre (pkm)",
         xaxis_tickformat="%H:%M"
@@ -202,11 +207,43 @@ def occupancy_trend_plot(df):
         labels={"time_day": "Time", "value": "No. passengers", "type_day":"Day of the week"}
     )
     fig.update_layout(
+        xaxis=dict(
+            tickmode="array",
+            tickvals=df["time_day"][::100],
+            tickangle=90
+        ),
         xaxis_title="Time of day",
         yaxis_title="# Passengers",
         xaxis_tickformat="%H:%M"
     )
 
+    return fig
+
+def capacity_factor_trend_plot(df):
+    df = df.unstack().unstack().reset_index()
+    df = pd.melt(df, id_vars=["year", "type_transport"])
+    
+    years = df["year"].unique()
+    filter_year = st.selectbox("Select year", options=years, key="filter_year_capacity")
+    df = df[df["year"]==filter_year].drop("year", axis="columns")
+    fig = px.line(
+        df,
+        x="departure_time",
+        y="value",
+        color="type_transport",
+        title="Capacity factor per vehicle",
+        labels={"departure_time": "Time", "type_transport": "Type transport", "value": "Capacity factor"}
+    )
+    fig.update_layout(
+        xaxis=dict(
+            tickmode="array",
+            tickvals=df["departure_time"][::10000],
+            tickangle=90
+        ),
+        xaxis_title = "Departure time",
+        yaxis_title = "Capacity factor",
+        xaxis_tickformat="%H:%M"
+    )
     return fig
 
 
@@ -253,4 +290,7 @@ else:
         st.markdown("<h1 style='font-size:26px'>Occupancy trends per day and year", unsafe_allow_html=True)
         fig = occupancy_trend_plot(df=st.session_state.metrics["occupancy_trend"])
         st.plotly_chart(fig)
-
+    with col2:
+        st.markdown("<h1 style='font-size:26px'>Capacity factor per type of transport</h1>", unsafe_allow_html=True)
+        fig = capacity_factor_trend_plot(df=st.session_state.metrics["capacity_factor"])
+        st.plotly_chart(fig)
