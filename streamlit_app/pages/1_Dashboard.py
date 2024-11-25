@@ -157,6 +157,31 @@ def donought_km_travelled(df):
     )
     return fig
 
+def occupancy_trend_plot(df):
+    unique_years = df["year"].unique()
+    filter_one_year = st.selectbox("Select year", options=unique_years, key="select_year")
+    filter_multiple_vehicles = st.multiselect(
+        "Select vehicles",
+        options=df["vehicle_class"].unique(),
+        default=df["vehicle_class"].unique(),
+        key="select_vehicle_class"
+    )
+    df = df[(df["year"] == filter_one_year) & (df["vehicle_class"].isin(filter_multiple_vehicles))]
+
+    fig = px.line(
+        df,
+        x="time",
+        y="pkm",
+        color="vehicle_class",
+        labels={"time":"Time", "pkm": "passenger-kilometre (pkm)", "vehicle_class":"Vehicle Type"}
+    )
+    fig.update_layout(
+        xaxis_title="Time",
+        yaxis_title="passenger-kilometre (pkm)",
+        xaxis_tickformat="%H:%M"
+    )
+
+    return fig
 
 # Logic
 if "metrics" not in st.session_state or st.session_state.metrics is None:
@@ -193,4 +218,6 @@ else:
 
     with col2:
         st.markdown("<h1 style='font-size:26px'>Distribution of pkm", unsafe_allow_html=True)
+        fig = occupancy_trend_plot(df=st.session_state.metrics["pkm_amount"])
+        st.plotly_chart(fig)
 

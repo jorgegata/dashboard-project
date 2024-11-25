@@ -114,8 +114,8 @@ def calculate_metrics(data):
     saved_co2 = pkm_co2_car.sub(pkm_co2_public_transport.sum(axis=1), axis="rows") / 1000 # Translate to tons CO2-eq
 
     all_df = {"number_passengers": number_passengers,
-              "occupancy_tren": occupancy_trend,
-              "passenger_day" :passengers_night,
+              "occupancy_trend": occupancy_trend,
+              "passenger_day" : passengers_night,
               "vehicle_use": vehicle_use,
               "pkm_amount": pkm_amount,
               "number_lines": number_lines,
