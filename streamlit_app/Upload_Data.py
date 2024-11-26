@@ -9,26 +9,25 @@ import utils.data_cleaning as data_cleaning
 import utils.metrics as metrics
 import utils.global_values as global_values
 
+# Constants
 EXTRACT_OUTPUT_DIRECTORY = "./data/"
 
-st.set_page_config(
-    page_title="Dashboard application",
-    page_icon=":bar_chart:",
-    layout="wide"
+# Set page configuration
+st.set_page_config(page_title="Dashboard application",page_icon=":bar_chart:",layout="wide")
+st.title("Pilot Project - v0.2")
 
-)
-
-st.title("Pilot Project - v0.1")
-
-# Initialization of session state variables
 if "final_data" not in st.session_state:
     st.session_state.final_data = None
-    st.session_state.metrics = None
+if "years" not in st.session_state:
+    st.session_state.years = None
+if "uploaded_files_processed" not in st.session_state:
+    st.session_state.uploaded_files_processed = False
+if "csv_uploaded_processed" not in st.session_state:
+    st.session_state.csv_uploaded_processed = False
 
 @st.cache_data
 def process_uploaded_files(uploaded_files):
-    dataframes = []
-    years = []
+    dataframes, years = [], []
     for uploaded_file in uploaded_files:
         year_file = functions_app.obtain_year_zipfile(uploaded_file.name)
         years.append(year_file)
@@ -40,6 +39,7 @@ def process_uploaded_files(uploaded_files):
             st.success(f"Extracted {len(csv_files)} CSV files to: {extraction_directory}")
         else:
             st.warning(f"No CSV files found in {uploaded_file.name}")
+
         dataframes.append(data_loading.load_and_merge_data(year_file))
     return pd.concat(dataframes, ignore_index=True), years
 
@@ -52,46 +52,58 @@ def clean_data(raw_data):
 def compute_metrics(cleaned_data):
     return metrics.calculate_metrics(cleaned_data)
 
-st.markdown(f"Option 1: Process the data")
-uploaded_files = st.file_uploader(
-    "Upload ZIP file(s) containing the datasets",
-    type="zip",
-    accept_multiple_files=True
-)
+@st.cache_data
+def load_csv(path):
+    return pd.read_csv(path)
+
+def obtain_year_period(csv_path):
+        years = csv_path.split("_")[-1].split(".")[0].split("-")
+        return years
+
+st.markdown(f"Option 1: Upload ZIP files containing raw datasets")
+uploaded_files = st.file_uploader("Upload ZIP file(s)", type="zip", accept_multiple_files=True)
 
 st.markdown(f"<br>Option 2: Upload the processed data", unsafe_allow_html=True)
-csv_uploaded_file = st.file_uploader(
-    label="Upload the CSV file with the datasets processed",
-    type="csv"
-)
+processed_csv_uploaded = st.file_uploader(label="Upload processed CSV file",type="csv")
 
 # Handle Option 1: Process raw data
-if uploaded_files:
-    with st.spinner("Processing uploaded files..."):
-        raw_data, years = process_uploaded_files(uploaded_files)
+if uploaded_files and not st.session_state.uploaded_files_processed:
+    try:
+        raw_data, st.session_state.years = process_uploaded_files(uploaded_files)
         st.session_state.final_data = clean_data(raw_data)
-        st.session_state.csv_path = os.path.join(os.getcwd(), "output", f"processed_data_{years[0]}-{years[-1]}.csv")
-        st.session_state.final_data.to_csv(st.session_state.csv_path)
+        csv_path = os.path.join(os.getcwd(), "output", f"processed_data_{st.session_state.years[0]}-{st.session_state.years[-1]}.csv")
+        st.session_state.final_data.to_csv(csv_path, index=False)
         st.download_button(
             label=f"Download CSV",
-            data=st.session_state.final_data.to_csv(index=False),
-            file_name=f"processed_data_{years[0]}-{years[-1]}.csv",
+            data=st.session_state.final_data.to_csv(),
+            file_name=f"processed_data_{st.session_state.years[0]}-{st.session_state.years[-1]}.csv",
             mime="text/csv"
     )
+        st.session_state.uploaded_files_processed = True
+    except Exception as e:
+        st.error(f"An error occured while processing files: {e}")
 
-# Handle Option 2: Read processed data
-if csv_uploaded_file:
-    st.write("")
-    st.write("")
-    with st.spinner("Loading CSV file..."):
-        st.session_state.final_data = pd.read_csv(csv_uploaded_file)
-        st.success(f"The CSV file was succesfully loaded")
+if processed_csv_uploaded and not st.session_state.csv_uploaded_processed:
+    try:
+        st.session_state.years = obtain_year_period(processed_csv_uploaded.name)
+        st.session_state.final_data = load_csv(processed_csv_uploaded)
+        st.success("Processed CSV file loaded succesfully")
+        st.session_state.csv_uploaded_processed = True
+    except Exception as e:
+        st.error(f"An error ocurred while loading the file: {e}")
 
-# Generate metrics and display results if data is available
+# Calculate metrics if data is available
 if st.session_state.final_data is not None:
-    st.markdown("<br><br>Calculating metrics...", unsafe_allow_html=True)
-    st.session_state.metrics = metrics.calculate_metrics(data=st.session_state.final_data)
-    if st.session_state.metrics is not None:
-        st.success("Metrics are ready! Navigate to the Dashboard Display to see the trends")
-    else:
-        st.warning("Error on the calculation of the metrics")
+    st.write("")
+    st.write(f"Time period loaded: {st.session_state.years[0]} - {st.session_state.years[-1]}")
+    st.write(st.session_state.final_data.head(5))
+    with st.spinner("Calculating metrics..."):
+        try:
+            st.session_state.metrics = compute_metrics(st.session_state.final_data)
+            st.success("Metrics calculated succesfully! Navigate to the Dashboard Display")
+        except Exception as e:
+            st.error(f"An error ocurred while calculating metrics: {e}")
+
+if st.session_state.uploaded_files_processed or st.session_state.csv_uploaded_processed:
+    st.session_state.uploaded_files_processed = False
+    st.session_state.csv_uploaded_processed = False

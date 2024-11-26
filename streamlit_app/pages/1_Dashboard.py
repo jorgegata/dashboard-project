@@ -115,6 +115,8 @@ def change_lines_metric(df):
     df = df.apply(lambda x: x - x.iloc[0]).loc[filter_years]
     df.columns = df.columns.map(VEHICLE_CLASS)
 
+    print(df)
+
     fig = go.Figure()
 
     for type_transport in df.columns:
