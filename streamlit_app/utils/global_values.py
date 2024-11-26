@@ -2,8 +2,7 @@ import pandas as pd
 
 
 """
-SOURCES OF INFORMATION:
-
+SOURCES OF DATA:
 Cable cars: Urban cable cars: Modern cable car systems open up new options for mobility in our cities” by Heiner Monheim et al. (2010, ksv-verlag)
 Rest of type of vehicles: Data source: UK Government, Department for Energy Security and Net Zero (2022)
 Funicular: https://oitaf2024.com/wp-content/uploads/2024/07/The-transport-capacity-of-a-cable-car-system-in-public-transportation_DEF-1.pdf

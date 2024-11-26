@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
-import zipfile
-import io
 import os
+
+# Import custom modules
 import utils.functions as functions_app
 import utils.data_loading as data_loading
 import utils.data_cleaning as data_cleaning
@@ -12,10 +12,13 @@ import utils.global_values as global_values
 # Constants
 EXTRACT_OUTPUT_DIRECTORY = "./data/"
 
-# Set page configuration
-st.set_page_config(page_title="Dashboard application",page_icon=":bar_chart:",layout="wide")
+# Streamlit Page Configuration
+st.set_page_config(page_title="Dashboard application",
+                   page_icon=":bar_chart:",
+                   layout="wide")
 st.title("Pilot Project - v0.2")
 
+# Initialize Session State Variables
 if "final_data" not in st.session_state:
     st.session_state.final_data = None
 if "years" not in st.session_state:
@@ -25,6 +28,7 @@ if "uploaded_files_processed" not in st.session_state:
 if "csv_uploaded_processed" not in st.session_state:
     st.session_state.csv_uploaded_processed = False
 
+# Cache functions
 @st.cache_data
 def process_uploaded_files(uploaded_files):
     dataframes, years = [], []
@@ -60,17 +64,21 @@ def obtain_year_period(csv_path):
         years = csv_path.split("_")[-1].split(".")[0].split("-")
         return years
 
+# File Upload Widgets
 st.markdown(f"Option 1: Upload ZIP files containing raw datasets")
 uploaded_files = st.file_uploader("Upload ZIP file(s)", type="zip", accept_multiple_files=True)
 
 st.markdown(f"<br>Option 2: Upload the processed data", unsafe_allow_html=True)
 processed_csv_uploaded = st.file_uploader(label="Upload processed CSV file",type="csv")
 
-# Handle Option 1: Process raw data
+# Handle uploaded Zip files
 if uploaded_files and not st.session_state.uploaded_files_processed:
     try:
+        # Process and clean data
         raw_data, st.session_state.years = process_uploaded_files(uploaded_files)
         st.session_state.final_data = clean_data(raw_data)
+
+        # Save processed data and provide a download option
         csv_path = os.path.join(os.getcwd(), "output", f"processed_data_{st.session_state.years[0]}-{st.session_state.years[-1]}.csv")
         st.session_state.final_data.to_csv(csv_path, index=False)
         st.download_button(
@@ -78,13 +86,15 @@ if uploaded_files and not st.session_state.uploaded_files_processed:
             data=st.session_state.final_data.to_csv(),
             file_name=f"processed_data_{st.session_state.years[0]}-{st.session_state.years[-1]}.csv",
             mime="text/csv"
-    )
+        )
         st.session_state.uploaded_files_processed = True
     except Exception as e:
         st.error(f"An error occured while processing files: {e}")
 
+# Handle uploaded CSV file
 if processed_csv_uploaded and not st.session_state.csv_uploaded_processed:
     try:
+        # Load processed data
         st.session_state.years = obtain_year_period(processed_csv_uploaded.name)
         st.session_state.final_data = load_csv(processed_csv_uploaded)
         st.success("Processed CSV file loaded succesfully")
@@ -104,6 +114,7 @@ if st.session_state.final_data is not None:
         except Exception as e:
             st.error(f"An error ocurred while calculating metrics: {e}")
 
+# Reset upload states after processing
 if st.session_state.uploaded_files_processed or st.session_state.csv_uploaded_processed:
     st.session_state.uploaded_files_processed = False
     st.session_state.csv_uploaded_processed = False

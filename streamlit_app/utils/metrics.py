@@ -17,15 +17,13 @@ TOTAL_SUNDAYS_FACTOR = 62
 def calculate_metrics(data):
 
     # Adding needed metrics
-    data["passenger_line_year"] = data["passenger_in"] * data["factor_average"]
-    data["occupancy_rate_0"] = data["passenger_amount"] / data["seat_capacity"]
-    data["passenger_amount_WD"] = data["passenger_amount"] * data["factor_workingDays"] / TOTAL_WORKING_DAYS_FACTOR
-    data["passenger_amount_NWD"] = ((data["passenger_amount"] * data["factor_saturday"] / TOTAL_SATURDAYS_FACTOR) +
+    data["flow_passengers_in"] = data["passenger_in"] * data["factor_average"]
+    data["ocuppancy_rate_seats"] = data["passenger_amount"] / data["seat_capacity"]
+    data["passenger_amount_workingDay"] = data["passenger_amount"] * data["factor_workingDays"] / TOTAL_WORKING_DAYS_FACTOR
+    data["passenger_amount_nonWorkingDay"] = ((data["passenger_amount"] * data["factor_saturday"] / TOTAL_SATURDAYS_FACTOR) +
                                     (data["passenger_amount"] * data["factor_sunday"] / TOTAL_SUNDAYS_FACTOR))
     data["passenger_amount_night"] = ((data["passenger_amount"] * data["factor_saturday_night"] / TOTAL_SATURDAYS_FACTOR) + 
                                     (data["passenger_amount"] * data["factor_sunday_night"]) / TOTAL_SUNDAYS_FACTOR)
-    data["passenger_amount_night_saturday"] = data["passenger_amount"] * data["factor_saturday_night"] / TOTAL_SATURDAYS_FACTOR
-    data["passenger_amount_night_sunday"] = data["passenger_amount"] * data["factor_sunday_night"] / TOTAL_SUNDAYS_FACTOR
     data["passenger_kilometre"] = data["passenger_amount"] * data["distance"] * data["factor_average"]
     data["passenger_kilometre_co2"] = data["passenger_kilometre"] * data["carbon_intensity"]
     data["distance_travelled"] = data["distance"] * data["factor_average"]
@@ -38,19 +36,19 @@ def calculate_metrics(data):
     # Number of passengers (dim: line and year)
     number_passengers = (data.pivot_table(index="year",
                                           columns="line_name",
-                                          values="passenger_line_year",
+                                          values="flow_passengers_in",
                                           aggfunc="sum")
     )
 
     # Occupancy (dim: type of day, year and time instant)
     occupancy_trend = data.pivot_table(index="departure_time",
                                     columns="year",
-                                    values=["passenger_amount_WD", "passenger_amount_NWD","passenger_amount_night"],
+                                    values=["passenger_amount_workingDay", "passenger_amount_nonWorkingDay","passenger_amount_night"],
                                     aggfunc="sum")
 
-    occupancy_trend = (functions.aggregate_time_step(occupancy_trend, amount="1min")
-                                .rename({"passenger_amount_NWD": "Non-working days",
-                                        "passenger_amount_WD": "Working days",
+    occupancy_trend = (functions.aggregate_time_step(occupancy_trend, amount="15S")
+                                .rename({"passenger_amount_nonWorkingDay": "Non-working days",
+                                        "passenger_amount_workingDay": "Working days",
                                         "passenger_amount_night": "Non-working nights"},
                                         axis=1))
 
@@ -59,25 +57,14 @@ def calculate_metrics(data):
                                         columns="year",
                                         values="passenger_amount_night",
                                         aggfunc="sum")
-    passengers_night = functions.aggregate_time_step(passengers_night, amount="1min")
-
-    # Vehicle class use (dim: time of day, vehicle class, type of day, year)Passenger metrics: Type of vehicle used per time
-    vehicle_use = data.pivot_table(index="departure_time",
-                                columns=["year", "type_transport"],
-                                values=["passenger_amount_WD",
-                                        "passenger_amount_NWD",
-                                        "passenger_amount_night",
-                                        "passenger_amount_night_saturday",
-                                        "passenger_amount_night_sunday"],
-                                aggfunc="sum")
-    vehicle_use = functions.aggregate_time_step(vehicle_use, amount="1min")
+    passengers_night = functions.aggregate_time_step(passengers_night, amount="15S")
 
     # Passenger-kilometer (dim: vehicle class, year, time of day)
     pkm_amount = data.pivot_table(index=["departure_time"],
                                             columns=["year","type_transport"],
                                             values="passenger_kilometre",
                                             aggfunc="sum")
-    pkm_amount = functions.aggregate_time_step(pkm_amount, amount="1min")
+    pkm_amount = functions.aggregate_time_step(pkm_amount, amount="15S")
     pkm_amount = pkm_amount.stack(future_stack=True).stack(future_stack=True).reset_index().rename({"level_0":"time","type_transport":"vehicle_class",
                                                                   0:"pkm"}, axis=1)
 
@@ -90,7 +77,7 @@ def calculate_metrics(data):
     # Capacity factor of vehicle class (dim: time day, vehicle class, year)
     capacity_factor = data.pivot_table(index="departure_time",
                                         columns=["year", "type_transport"],
-                                        values="occupancy_rate_0").fillna(0)
+                                        values="ocuppancy_rate_seats").fillna(0)
 
     ######### DISTANCE AND TIME METRICS #########
 
@@ -115,7 +102,6 @@ def calculate_metrics(data):
     all_df = {"number_passengers": number_passengers,
               "occupancy_trend": occupancy_trend,
               "passenger_day" : passengers_night,
-              "vehicle_use": vehicle_use,
               "pkm_amount": pkm_amount,
               "number_lines": number_lines,
               "capacity_factor": capacity_factor,

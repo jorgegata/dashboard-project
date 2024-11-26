@@ -6,61 +6,50 @@ import pandas as pd
 import numpy as np
 import os
 import utils.visualizations as visualizations
+import utils.global_values as global_values
 
-VEHICLE_CLASS = {'TR': "Trolley Bus",
-                 'T': "Tram",
-                 'B': "Bus Urban",
-                 'BP': "Bus P",
-                 'BL': "Bus L",
-                 'BZ': "Bus Z",
-                 'FB': "Funicular",
-                 'N': "Night Bus",
-                 'BG': "Bus G",
-                 'SB': "Cable car"}
-
-# Definition of functions
-
-# Configuration of page
+# Page configuration
 st.set_page_config(
     page_title="Dashboard",
     page_icon=":bar_chart:",
     layout="wide"
 )
 
+# Metric functions
 def pkm_metric(df):
-    pkm = df.groupby("year")["pkm"].sum()
+    pkm = df.groupby("year")["pkm"].sum() / 1e6
     value_actual = pkm.iloc[-1]
     value_previous = pkm.iloc[-2]
     absolute_increase = value_actual - value_previous
     percentage_increase = (absolute_increase / value_previous) * 100
     st.metric(
-        label=f"Passenger-kilometre in {pkm.index[-1]}",
-        value= f"{value_actual:,.0f} pkm",
+        label=f"Passenger-kilometre (in millions) in {pkm.index[-1]}",
+        value= f"{value_actual:,.1f} M pkm",
         delta=f"{absolute_increase:,.1f} ({percentage_increase:,.1f} %)"
     )
 
 def passenger_boarding_metric(df):
     passenger_boarding = df = df.stack().reset_index().rename({0:"passenger_in"}, axis=1)
-    years = np.array(passenger_boarding["year"].unique()).astype(np.int32)
-    value_actual = passenger_boarding[passenger_boarding["year"] == years[-1]]["passenger_in"].sum()
-    value_previous = passenger_boarding[passenger_boarding["year"] == years[-2]]["passenger_in"].sum()
+    years = np.array(passenger_boarding["year"].unique())
+    value_actual = passenger_boarding[passenger_boarding["year"] == years[-1]]["passenger_in"].sum() / 1e6
+    value_previous = passenger_boarding[passenger_boarding["year"] == years[-2]]["passenger_in"].sum() / 1e6
     absolute_increase = value_actual - value_previous
     percentage_increase = (absolute_increase / value_previous) * 100
     st.metric(
-        label = f"Passengers (boarding)",
-        value = f"{value_actual:,.0f} passengers in",
+        label = f"Passengers (boarding) (in millions) ",
+        value = f"{value_actual:,.1f} M pass. in",
         delta = f"{absolute_increase:,.1f} ({percentage_increase:,.1f} %)"
     )
 
 def distance_metric(df):
-    distance = df.groupby("year")["distance_travelled"].sum()
+    distance = df.groupby("year")["distance_travelled"].sum() / 1e6
     value_actual = distance.iloc[-1]
     value_previous = distance.iloc[-2]
     absolute_increase = value_actual - value_previous
     percentage_increase = (absolute_increase / value_previous) * 100
     st.metric(
-        label=f"Distance Travelled in {distance.index[-1]}",
-        value=f"{value_actual:,.0f} km",
+        label=f"Distance travelled (in millions) in {distance.index[-1]}",
+        value=f"{value_actual:,.1f} M vkm",
         delta=f"{absolute_increase:,.1f} ({percentage_increase:,.1f} %)"
     )
 
@@ -71,10 +60,11 @@ def co2_metric(df):
     percentage_increase = (absolute_increase / value_previous) * 100
     st.metric(
         label=f"CO2 emissions avoided {df.index[-1]}",
-        value=f"{value_actual:,.0f} tons CO2",
+        value=f"{value_actual:,.0f} t CO2-eq",
         delta=f"{absolute_increase:,.1f} ({percentage_increase:,.1f} %)"
     )
 
+# Visualization plots
 def breakdown_lines_metric(df):
     df = df.stack().reset_index().rename({0:"passenger_in"}, axis=1)
 
@@ -96,7 +86,6 @@ def breakdown_lines_metric(df):
         ))
         fig.update_layout(
             barmode="group",
-            title="Flow of Passengers Entering by Line and Year",
             xaxis_title="Passengers In",
             yaxis_title="Year",
             legend_title="Line",
@@ -106,7 +95,7 @@ def breakdown_lines_metric(df):
 
 def number_lines_metric(df):
     df = df.stack().reset_index().rename({0:"number_lines"}, axis=1)
-    df["type_transport"] = df["type_transport"].map(VEHICLE_CLASS)
+    df["type_transport"] = df["type_transport"].map(global_values.VEHICLE_CLASS)
     selected_year = st.selectbox("Select Year", options=df["year"].unique())
     df = df[df["year"] == selected_year]
 
@@ -127,7 +116,7 @@ def number_lines_metric(df):
 def change_lines_metric(df):
     filter_years = st.multiselect("Select year", options=df.index[1:], default=df.index[1:])
     df = df.apply(lambda x: x - x.iloc[0]).loc[filter_years]
-    df.columns = df.columns.map(VEHICLE_CLASS)
+    df.columns = df.columns.map(global_values.VEHICLE_CLASS)
 
     fig = go.Figure()
 
@@ -166,7 +155,6 @@ def donought_km_travelled(df):
         ]
     )
     fig.update_layout(
-        title=f"Vehicle class shares for {filtered_year}",
         annotations=[{'text':f'{filtered_year}', 'x':0.5, 'y':0.5, 'font_size':20, 'showarrow':False}]
     )
     return fig
@@ -174,13 +162,7 @@ def donought_km_travelled(df):
 def passengerkm_trend_plot(df):
     unique_years = df["year"].unique()
     filter_one_year = st.selectbox("Select year", options=unique_years, key="select_year")
-    filter_multiple_vehicles = st.multiselect(
-        "Select vehicles",
-        options=df["vehicle_class"].unique(),
-        default=df["vehicle_class"].unique(),
-        key="select_vehicle_class"
-    )
-    df = df[(df["year"] == filter_one_year) & (df["vehicle_class"].isin(filter_multiple_vehicles))]
+    df = df[(df["year"] == filter_one_year)]
 
     fig = px.line(
         df,
@@ -192,7 +174,7 @@ def passengerkm_trend_plot(df):
     fig.update_layout(
         xaxis=dict(
             tickmode="array",
-            tickvals=df["time"][::200],
+            tickvals=df["time"][::5000],
             tickangle=90
         ),
         xaxis_title="Time",
@@ -217,13 +199,12 @@ def occupancy_trend_plot(df):
         x="time_day",
         y="value",
         color="type_day",
-        title=f"Amounts of passenger for {filter_one_year}",
         labels={"time_day": "Time", "value": "No. passengers", "type_day":"Day of the week"}
     )
     fig.update_layout(
         xaxis=dict(
             tickmode="array",
-            tickvals=df["time_day"][::100],
+            tickvals=df["time_day"][::1000],
             tickangle=90
         ),
         xaxis_title="Time of day",
@@ -245,7 +226,6 @@ def capacity_factor_trend_plot(df):
         x="departure_time",
         y="value",
         color="type_transport",
-        title="Capacity factor per vehicle",
         labels={"departure_time": "Time", "type_transport": "Type transport", "value": "Capacity factor"}
     )
     fig.update_layout(
@@ -260,13 +240,14 @@ def capacity_factor_trend_plot(df):
     )
     return fig
 
-# Logic
+########## Main logic ##########
 if "metrics" not in st.session_state or st.session_state.metrics is None:
     st.warning("Metrics are not available. Please, calculate them on the main page")
 else:
-    st.title("Dashboard")
+    st.title("Dashboard Page")
     st.markdown("<br><br>", unsafe_allow_html=True)
 
+    # Main metrics
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         pkm_metric(st.session_state.metrics["pkm_amount"])
@@ -277,34 +258,36 @@ else:
     with col4:
         passenger_boarding_metric(st.session_state.metrics["number_passengers"])
 
+    # Visualizations
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown("<br><br> <h1 style='font-size:26px'>Flow of Passengers Entering by Line and Year</h1>", unsafe_allow_html=True)
-        fig = breakdown_lines_metric(st.session_state.metrics["number_passengers"])
-        st.plotly_chart(fig)
-    with col2:
-        st.markdown("<br><br> <h1 style='font-size:26px'>Number of km per vehicle </h1>", unsafe_allow_html=True)
+        st.markdown("<br><br> <h1 style='font-size:26px'>Passenger-kilometre share </h1>", unsafe_allow_html=True)
         fig = donought_km_travelled(df=st.session_state.metrics["pkm_amount"])
         st.plotly_chart(fig)
 
+    with col2:
+        st.markdown("<br><br> <h1 style='font-size:26px'>Passengers (boarding)</h1>", unsafe_allow_html=True)
+        fig = breakdown_lines_metric(st.session_state.metrics["number_passengers"])
+        st.plotly_chart(fig)
+        
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown("<h1 style='font-size:26px'>Number of Lines per Vehicle </h1>", unsafe_allow_html=True)
+        st.markdown("<h1 style='font-size:26px'>Number of lines </h1>", unsafe_allow_html=True)
         fig = number_lines_metric(st.session_state.metrics["number_lines"])
         st.plotly_chart(fig)
         
     with col2:
-        st.markdown("<h1 style='font-size:26px'>Occupancy trends per day and year", unsafe_allow_html=True)
+        st.markdown("<h1 style='font-size:26px'>Occupancy trend (passengers travelling) </h1>", unsafe_allow_html=True)
         fig = occupancy_trend_plot(df=st.session_state.metrics["occupancy_trend"])
         st.plotly_chart(fig)
     
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown("<h1 style='font-size:26px'>Distribution of pkm", unsafe_allow_html=True)
+        st.markdown("<h1 style='font-size:26px'>Passenger-kilometre distribution", unsafe_allow_html=True)
         fig = passengerkm_trend_plot(df=st.session_state.metrics["pkm_amount"])
         st.plotly_chart(fig)
         
     with col2:
-        st.markdown("<h1 style='font-size:26px'>Capacity factor per type of transport</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 style='font-size:26px'>Capacity factor</h1>", unsafe_allow_html=True)
         fig = capacity_factor_trend_plot(df=st.session_state.metrics["capacity_factor"])
         st.plotly_chart(fig)
