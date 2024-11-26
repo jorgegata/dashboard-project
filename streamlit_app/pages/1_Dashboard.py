@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
+import numpy as np
 import os
 import utils.visualizations as visualizations
 
@@ -38,8 +39,21 @@ def pkm_metric(df):
         delta=f"{absolute_increase:,.1f} ({percentage_increase:,.1f} %)"
     )
 
+def passenger_boarding_metric(df):
+    passenger_boarding = df = df.stack().reset_index().rename({0:"passenger_in"}, axis=1)
+    years = np.array(passenger_boarding["year"].unique()).astype(np.int32)
+    value_actual = passenger_boarding[passenger_boarding["year"] == years[-1]]["passenger_in"].sum()
+    value_previous = passenger_boarding[passenger_boarding["year"] == years[-2]]["passenger_in"].sum()
+    absolute_increase = value_actual - value_previous
+    percentage_increase = (absolute_increase / value_previous) * 100
+    st.metric(
+        label = f"Passengers (boarding)",
+        value = f"{value_actual:,.0f} passengers in",
+        delta = f"{absolute_increase:,.1f} ({percentage_increase:,.1f} %)"
+    )
+
 def distance_metric(df):
-    distance = df.groupby("year")["distance"].sum()
+    distance = df.groupby("year")["distance_travelled"].sum()
     value_actual = distance.iloc[-1]
     value_previous = distance.iloc[-2]
     absolute_increase = value_actual - value_previous
@@ -246,7 +260,6 @@ def capacity_factor_trend_plot(df):
     )
     return fig
 
-
 # Logic
 if "metrics" not in st.session_state or st.session_state.metrics is None:
     st.warning("Metrics are not available. Please, calculate them on the main page")
@@ -254,13 +267,15 @@ else:
     st.title("Dashboard")
     st.markdown("<br><br>", unsafe_allow_html=True)
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
         pkm_metric(st.session_state.metrics["pkm_amount"])
     with col2:
         distance_metric(st.session_state.metrics["distance_travelled"])
     with col3:
         co2_metric(st.session_state.metrics["saved_co2"])
+    with col4:
+        passenger_boarding_metric(st.session_state.metrics["number_passengers"])
 
     col1, col2 = st.columns(2)
     with col1:

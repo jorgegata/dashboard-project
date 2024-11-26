@@ -28,12 +28,11 @@ def calculate_metrics(data):
     data["passenger_amount_night_sunday"] = data["passenger_amount"] * data["factor_sunday_night"] / TOTAL_SUNDAYS_FACTOR
     data["passenger_kilometre"] = data["passenger_amount"] * data["distance"] * data["factor_average"]
     data["passenger_kilometre_co2"] = data["passenger_kilometre"] * data["carbon_intensity"]
+    data["distance_travelled"] = data["distance"] * data["factor_average"]
 
     ######### PASSENGER FRAMES ########
 
     # Calculation of auxiliary series
-    distance_total = data.pivot_table(index="year", values="distance", aggfunc="sum")
-    passenger_total = data.pivot_table(index="year", values="passenger_amount", aggfunc="sum")
     pkm_total = data.pivot_table(index="year", values="passenger_kilometre", aggfunc="sum")
 
     # Number of passengers (dim: line and year)
@@ -98,12 +97,12 @@ def calculate_metrics(data):
     # Distance travelled per vehicle and year
     distance_travelled = (data.pivot_table(index="year",
                                            columns="type_transport",
-                                           values="distance",
+                                           values="distance_travelled",
                                            aggfunc="sum")
                             .unstack()
                             .reset_index()
                             .rename({"type_transport":"vehicle_class",
-                                     0:"distance"}, axis=1))
+                                     0:"distance_travelled"}, axis=1))
 
     # Emisssions saved by public transport fleet against representative vehicle fleet (dim: year)
     pkm_co2_public_transport =  data.pivot_table(index="year",
