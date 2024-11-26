@@ -115,8 +115,6 @@ def change_lines_metric(df):
     df = df.apply(lambda x: x - x.iloc[0]).loc[filter_years]
     df.columns = df.columns.map(VEHICLE_CLASS)
 
-    print(df)
-
     fig = go.Figure()
 
     for type_transport in df.columns:
@@ -255,8 +253,8 @@ if "metrics" not in st.session_state or st.session_state.metrics is None:
 else:
     st.title("Dashboard")
     st.markdown("<br><br>", unsafe_allow_html=True)
+
     col1, col2, col3 = st.columns(3)
-    
     with col1:
         pkm_metric(st.session_state.metrics["pkm_amount"])
     with col2:
@@ -264,34 +262,33 @@ else:
     with col3:
         co2_metric(st.session_state.metrics["saved_co2"])
 
-    st.markdown("<br><br> <h1 style='font-size:26px'>Flow of Passengers Entering by Line and Year</h1>", unsafe_allow_html=True)
-    fig = breakdown_lines_metric(st.session_state.metrics["number_passengers"])
-    st.plotly_chart(fig, use_container_width=True)
-
-    col1, col2, = st.columns(2)
-    with col1:
-        st.markdown("<h1 style='font-size:26px'>Number of Lines per Vehicle </h1>", unsafe_allow_html=True)
-        st.plotly_chart(number_lines_metric(st.session_state.metrics["number_lines"]))
-    with col2:
-        st.markdown(f"<h1 style='font-size:26px'>Lines added relative to {st.session_state.metrics["number_lines"].index[0]}", unsafe_allow_html=True)
-        st.write(change_lines_metric(st.session_state.metrics["number_lines"]))
-
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown("<h1 style='font-size:26px'>Number of km per vehicle </h1>", unsafe_allow_html=True)
+        st.markdown("<br><br> <h1 style='font-size:26px'>Flow of Passengers Entering by Line and Year</h1>", unsafe_allow_html=True)
+        fig = breakdown_lines_metric(st.session_state.metrics["number_passengers"])
+        st.plotly_chart(fig)
+    with col2:
+        st.markdown("<br><br> <h1 style='font-size:26px'>Number of km per vehicle </h1>", unsafe_allow_html=True)
         fig = donought_km_travelled(df=st.session_state.metrics["pkm_amount"])
         st.plotly_chart(fig)
 
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("<h1 style='font-size:26px'>Number of Lines per Vehicle </h1>", unsafe_allow_html=True)
+        fig = number_lines_metric(st.session_state.metrics["number_lines"])
+        st.plotly_chart(fig)
+        
     with col2:
-        st.markdown("<h1 style='font-size:26px'>Distribution of pkm", unsafe_allow_html=True)
-        fig = passengerkm_trend_plot(df=st.session_state.metrics["pkm_amount"])
+        st.markdown("<h1 style='font-size:26px'>Occupancy trends per day and year", unsafe_allow_html=True)
+        fig = occupancy_trend_plot(df=st.session_state.metrics["occupancy_trend"])
         st.plotly_chart(fig)
     
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown("<h1 style='font-size:26px'>Occupancy trends per day and year", unsafe_allow_html=True)
-        fig = occupancy_trend_plot(df=st.session_state.metrics["occupancy_trend"])
+        st.markdown("<h1 style='font-size:26px'>Distribution of pkm", unsafe_allow_html=True)
+        fig = passengerkm_trend_plot(df=st.session_state.metrics["pkm_amount"])
         st.plotly_chart(fig)
+        
     with col2:
         st.markdown("<h1 style='font-size:26px'>Capacity factor per type of transport</h1>", unsafe_allow_html=True)
         fig = capacity_factor_trend_plot(df=st.session_state.metrics["capacity_factor"])
