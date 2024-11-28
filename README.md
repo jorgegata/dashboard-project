@@ -13,13 +13,4 @@ The repository contains the code necessary to load, clean, transform, and displa
     - requirements: .txt file containing the dependencies needed
     - main.py: python file containing the main page of the dashboard  
 
-## Metrics computed
-
-* passenger-kilometre [pkm] (Annual average): distance_travelled * number_passengers_in_vehicle * factor_average 
-
-* distance travelled [km] (Annual average): distance * factor_average
-
-* CO2 emissions avoided [kg CO2-eq] (Annual average): \text{CO2 emissions avoided} [\text{kg CO2-eq}] = \text{passenger_kilometre}[ \text{type_transport}] \times \text{carbon_intensity}[ \text{type_transport}]
-
-
 
