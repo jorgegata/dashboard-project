@@ -15,4 +15,8 @@ It automatizes the processing considering all the files passed in the first part
     - utils: python files containing functions, constants, and other objects to implement the dashboard
     - main.py: python file containing the main page of the dashboard
 
+## Author
+Jorge Jaime Gata Cuesta
+jgatacuesta@ethz.ch
+
 
